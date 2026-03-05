@@ -1,4 +1,5 @@
 .venv/
 __pycache__/
 irs_data/
-
+.env
+*.xml
