@@ -4,8 +4,9 @@ import zipfile_deflate64 as zipfile
 from tqdm import tqdm
 import os
 from dotenv import load_dotenv
+import pandas as pd
 
-def insert(irs_data_path, foundations_batchsize=1000, grants_batchsize=10000):
+def insert(irs_data_path, db_con, foundations_batchsize=1000, grants_batchsize=10000):
     foundations_batch = []
     grants_batch = []
     for zip_name in tqdm(os.listdir(irs_data_path), desc="Processing zip files"):
@@ -24,20 +25,80 @@ def insert(irs_data_path, foundations_batchsize=1000, grants_batchsize=10000):
                     grants_batch.extend(grants)
 
                     if len(foundations_batch) >= foundations_batchsize:
-                        #insertion logic
+                        foundations_df = pd.DataFrame(foundations_batch, columns=[
+                            "ein",
+                            "business_name",
+                            "address",
+                            "city",
+                            "state",
+                            "zipcode",
+                            "url",
+                            "mission",
+                            "does_grants",
+                            "assets",
+                            "revenue",
+                            "expenses",
+                            "grants_paid",
+                            "return_type"
+                        ])
 
+                        db_con.register("foundations_df", foundations_df)
+
+                        db_con.execute("""
+                            INSERT INTO foundations
+                            SELECT * FROM foundations_df
+                            ON CONFLICT (ein, return_type) DO NOTHING
+                        """)
+
+                        foundations_batch.clear()
                     if len(grants_batch) >= grants_batchsize:
-                        #insertion logic
-                        
-    bad = []
-    for r in foundations_batch:
-        ein = r[0]
-        if ein is None or len(ein) != 9 or not ein.isdigit():
-            bad.append(ein)
+                        grants_df = pd.DataFrame(grants_batch, columns=[
+                            "ein",
+                            "recipient",
+                            "amount",
+                            "purpose"
+                        ])
 
-    print("bad count:", len(bad))
-    print("examples:", bad[:20])
+                        db_con.register("grants_df", grants_df)
+
+                        db_con.execute("""
+                            INSERT INTO grants
+                            SELECT * FROM grants_df
+                            ON CONFLICT (ein, recipient, amount) DO NOTHING
+                        """)
+
+                        grants_batch.clear()
+
+    if foundations_batch:
+        foundations_df = pd.DataFrame(foundations_batch, columns=[
+            "ein","business_name","address","city","state","zipcode",
+            "url","mission","does_grants","assets","revenue","expenses",
+            "grants_paid","return_type"
+        ])
+
+        db_con.register("foundations_df", foundations_df)
+
+        db_con.execute("""
+            INSERT INTO foundations
+            SELECT * FROM foundations_df
+            ON CONFLICT (ein, return_type) DO NOTHING
+        """)
+        foundations_batch.clear()
+
+
+
+    if grants_batch:
+
+        grants_df = pd.DataFrame(grants_batch, columns=[
+            "ein","recipient","amount","purpose"
+        ])
+
+        db_con.register("grants_df", grants_df)
+
+        db_con.execute("""
+            INSERT INTO grants
+            SELECT * FROM grants_df
+        """)
+        grants_batch.clear()
                     
-load_dotenv()
-insert(os.getenv("IRS_DATA_PATH"))
 

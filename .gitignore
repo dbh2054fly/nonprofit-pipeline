@@ -3,3 +3,4 @@ __pycache__/
 irs_data/
 .env
 *.xml
+*.duckdb

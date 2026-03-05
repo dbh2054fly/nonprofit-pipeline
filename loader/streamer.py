@@ -57,6 +57,7 @@ def process_xml(file_obj):
     revenue_tag = f"{NS}CYTotalRevenueAmt"
     expenses_tag = f"{NS}CYTotalExpensesAmt"
     grants_paid_tag = f"{NS}CYGrantsAndSimilarPaidAmt"
+    return_type_tag = f"{NS}ReturnTypeCd"
 
     tags = (
         grant_indicator_tag,
@@ -67,7 +68,8 @@ def process_xml(file_obj):
         assets_tag,
         revenue_tag,
         expenses_tag,
-        grants_paid_tag
+        grants_paid_tag,
+        return_type_tag
     )
 
     #initializing storage 
@@ -76,6 +78,7 @@ def process_xml(file_obj):
     url = None
     mission = None
     assets = revenue = expenses = grants_paid = None
+    return_type = None
 
     grant_list = []
 
@@ -110,6 +113,9 @@ def process_xml(file_obj):
         elif elem.tag == grants_paid_tag:
             grants_paid = parse_int(elem.text)
             elem.clear()
+        elif elem.tag == return_type_tag:
+            return_type = clean_text(elem.text)
+            elem.clear()
         elif elem.tag == schedule_i_tag:
             for grant in elem.findall(f".//{NS}RecipientTable"):
                 recipient = clean_text(grant.findtext(f".//{NS}BusinessNameLine1Txt"))
@@ -132,8 +138,8 @@ def process_xml(file_obj):
         assets,
         revenue,
         expenses,
-        grants_paid
+        grants_paid,
+        return_type
     )
     
     return foundation_row, grant_list
-            
